@@ -13,6 +13,7 @@ import Navbar from "./components/Navbar.js";
 import Login from "./components/Login.js";
 import Home from "./components/Home.js";
 import Signup from "./components/Signup.js";
+import User from "./components/User.js";
 
 //TODO: Check if there is a user currently signed in. If there is, make sure that their JWT hasn't expired. Ultimately, this
 //check will be used to redirect the user to the home page every time they try to click on the login or signup pages
@@ -39,6 +40,7 @@ class App extends React.Component {
   render() {
     return (
       <BrowserRouter>
+        {/* Navbar will display the navigation bar */}
         <Navbar />
         {/* A Switch looks through its children <Route>s and the renders the first one that matches the URL*/}
         <Switch>
@@ -71,6 +73,12 @@ class App extends React.Component {
             path="/home"
             render={(props) => (
               <Home {...props} authenticated={isAuthenticated} />
+            )}
+          />
+          <Route
+            path="/user/:userHandle"
+            render={(props) => (
+              <User {...props} authenticated={isAuthenticated} />
             )}
           />
         </Switch>

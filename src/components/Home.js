@@ -52,19 +52,18 @@ class Home extends React.Component {
       showSearchProgress : false,
       querySets : [],
       //querySetsModified : false,
-      queryUsers : [],
+      queryUsers : []
       //queryUsersModified : false
+      //openDialog : false,
+      //closeDialog : false
     };
   }
 
   _search = () => {
     //TODO: Every time a user clicks submit for search should I reset the the state (i.e. clear the arrays and negate the flags)???
-    //this.setState({searchPressed : true, querySets : [], querySetsModified : true});
-    //this.setState({searchPressed : true, showSearchProgress : true});
     this.setState({searchPressed : true, querySets : [], queryUsers: [], showSearchProgress : true});
 
     //TODO: Maybe might need to replace the spaces of searchValue with "+" or "%20" for the URL
-
     Promise.allSettled([
       fetch(apiURL + `/search-sets?q=${this.state.searchValue}`, {
         method : "GET",
@@ -158,7 +157,7 @@ class Home extends React.Component {
               {this.state.searchPressed ? (
                 //Display linear progress bar from the moment the user clicks the 
                 //search button to the moment SetResults finishes rendering its content
-                <UserResults users={this.state.queryUsers} />
+                <UserResults users={this.state.queryUsers} history={this.props.history}/>
               ) : ( 
                 <Typography>NO USERS TO SHOW</Typography>
               )}
@@ -173,7 +172,7 @@ class Home extends React.Component {
               {this.state.searchPressed ? (
                 //Display linear progress bar from the moment the user clicks the 
                 //search button to the moment SetResults finishes rendering its content
-                <SetResults sets={this.state.querySets} />
+                <SetResults sets={this.state.querySets} history={this.props.history}/>
               ) : ( 
                 <Typography>NO SETS TO SHOW</Typography>
               )}
