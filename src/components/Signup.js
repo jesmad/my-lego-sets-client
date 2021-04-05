@@ -116,7 +116,7 @@ class Signup extends React.Component {
           spacing={2}
         >
           <Grid item>
-            <Typography>My-Lego-Sets | Signup</Typography>
+            <Typography>My-Lego-Sets | Sign up</Typography>
           </Grid>
           <Grid item>
             <TextField

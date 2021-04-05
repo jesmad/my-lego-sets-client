@@ -1,5 +1,8 @@
 import React from "react";
 
+//Local Components
+import Set from "./Set.js";
+
 //JWT-Decode
 import jwt_decode from "jwt-decode";
 
@@ -21,6 +24,8 @@ import DialogContentText from "@material-ui/core/DialogContentText";
 import Snackbar from "@material-ui/core/Snackbar";
 import Slide from "@material-ui/core/Slide";
 import Grow from "@material-ui/core/Grow";
+import AddIcon from "@material-ui/icons/Add";
+import RemoveIcon from "@material-ui/icons/Remove";
 
 
 
@@ -40,6 +45,12 @@ const useStyles = (theme) => ({
     },
     media : {
 
+    },
+    setNotInCollection: {
+
+    },
+    setInCollection : {
+        //backgroundColor : "rgb(34,139,34)"
     }
 });
 
@@ -61,6 +72,10 @@ class SetResults extends React.Component {
             snackMessage : ""
         }
     };
+
+    _openDialog = () => {
+        this.setState( {openDialog : true} );
+    }
 
     _closeDialog = () => {
         this.setState( {openDialog : false});
@@ -89,6 +104,7 @@ class SetResults extends React.Component {
             pieceCount : set.pieceCount,
             price : set.price,
             theme : set.theme,
+            name : set.name,
             yearReleased : set.yearReleased,
             image : imageURL
         };
@@ -107,12 +123,12 @@ class SetResults extends React.Component {
                     //TODO: Indicate that the set was added successfully to user's collection
                     //TODO: Change the text of the button to reflect that the set is already in user's collection OR
                     //if bring up dialog box stating that the set will be removed from the collection                    
-                    this.setState( {snackMessage : "Set added to your collection", displaySnack : true});
+                    
+                    ////this.setState( {snackMessage : "Set added to your collection", displaySnack : true});
                 }
                 else {
                     //TODO: Dialog box to show that the set was not added to the collection because A. Set is already owned by the user or B. Some server side issue.
-                    this.setState( {snackMessage : "Unable to add set to your collection", displaySnack : true});
-                    
+                    ////this.setState( {snackMessage : "Unable to add set to your collection", displaySnack : true});
                 }
             })
             .catch( (error) => {
@@ -120,6 +136,16 @@ class SetResults extends React.Component {
             })
     }
 
+    _checkUserLoginStatus = (userSessionToken) => {
+        if (userSessionToken) {
+            //Check that the JWT has not expired
+            let decodedToken = jwt_decode(userSessionToken);
+            return (this._checkJWTExp(decodedToken) === false) ? true : false;
+        }
+        return false;
+    }
+
+    
     _addSet = (set) => {
         /* TODO:
             Check that the user is authenticated 
@@ -127,82 +153,73 @@ class SetResults extends React.Component {
             else => initiate a dialog box that notifies the user that the set will be added to their collection
                     Disable the button or change it to reflect that the user already has that set in their collection
         */
-        
         let userSessionToken = localStorage.getItem("userJWT");
+        let userLoggedIn = this._checkUserLoginStatus(userSessionToken);
 
-        if (userSessionToken) {
-            //Check that the JWT is not expired
-            let decodedToken = jwt_decode(userSessionToken);
-            if (this._checkJWTExp(decodedToken) === false) {
-                //Add set to user's collection
-                this._addSetToCollection(set, userSessionToken);
-                return;
-            }
-            else {
-                //JWT has expired
-                this.props.history.push("/login");
-            }
+        if (userLoggedIn) {
+            //Add set to collection
+            this._addSetToCollection(set, userSessionToken);
         }
         else {
-            //User is not logged in. Open alert dialog.
-            this.setState({openDialog : true});
+            //User is not logged in. Display alert dialog.
+            this.setState( {openDialog : true} );
         }
+    }
+
+    _flagUserSets = (userHandle, userCollection, displayedSets) => {
+        let lenDisSets = displayedSets.length;
+        for (let i = 0; i < lenDisSets; i++) {
+            displayedSets[i].ownedByCurrUser = userCollection.includes(displayedSets[i].setID);
+        }
+        //this.setState({});
+    }
+
+    _currUserSets = (displayedSets) => {
+        let userSessionToken = localStorage.getItem("userJWT");
+        let currUserLoggedInStatus = this._checkUserLoginStatus(userSessionToken);
+
+        //If the user is not logged in or JWT is expired, exit this function.
+        if (!currUserLoggedInStatus) return;
+
+        //Ensure user is authenticated. Retrieve their handle and collection.
+        fetch(apiURL + `/authenticate-user/${userSessionToken}`, {
+            method : 'GET',
+            headers : {'Content-Type' : 'application/json'}
+        })
+        .then( (response) => {
+            return response.json();
+        })
+        .then( (data) => {
+            let userHandle = data.handle;
+            let userCollection = data.collection;
+            this._flagUserSets(userHandle, userCollection, displayedSets);
+        })
+        .catch( (error) => {
+            alert('Unable to retrieve the handle of currently logged in user');
+        });
     }
 
     render() {
         const { classes, sets } = this.props;
+        //this._currUserSets(sets);
+        
+        //Distinguish which sets are in the current user's collection by adding a property to each 'set' object
         return (
             <div>
                 <Grid container spacing={1}>
-                    {sets.map( (set) => 
-                        <Grid item key={set.setID}>
-                            <Card className={classes.card}>
-                                <CardMedia
-                                    component="img"
-                                    alt="Lego Image"
-                                    height="90"
-                                    width="90"
-                                    image={set.image}
-                                    title="Lego Image"
-                                />
-                                <CardContent>
-                                    <Typography variant="h6" style={ {textAlign : "center"}}>{set.setID}: {set.name}</Typography>
-                                    <Typography variant="subtitle1">MINIFIGS: {set.numOfFigs}</Typography>
-                                    <Typography variant="subtitle1">PIECES: {set.pieceCount}</Typography>
-                                    <Typography variant="subtitle1">RRP: {set.price}</Typography>
-                                </CardContent>
-                                <CardActions>
-                                    <Button size="small" variant="outlined" onClick={() => this._addSet(set)}>Add</Button>
-                                    <Snackbar
-                                        open={this.state.displaySnack}
-                                        onClose={this._handleCloseSnack}
-                                        TransitionComponent={this.state.Transition}
-                                        message={this.state.snackMessage}
-                                        //key={this.state.Transition.name}
-                                        autoHideDuration={3000}
-                                        //style={ {backgroundColor : "rgb(55, 255, 48)"}}
-
-                                    />
-                                    <Dialog
-                                        open={this.state.openDialog}
-                                        onClose={this._closeDialog}
-                                    >
-                                        <DialogContent>
-                                        <DialogContentText id="alert-dialog-description">
-                                            Only users with an account are able to add sets to their collection. 
-                                        </DialogContentText>
-                                        </DialogContent>
-                                        <DialogActions>
-                                            <Button onClick={this._closeDialog}>Close</Button>
-                                            <Button onClick={this._redirectToLogin}>Go To Login</Button>
-                                        </DialogActions>
-                                    </Dialog>
-                                </CardActions>
-                                
-                            </Card>
-                        </Grid>
-                    
-                    )}
+                    {sets.map( (set) => ( 
+                    <Grid item key={set.setID}>
+                        <Set 
+                            setInfo={set} 
+                            openDialogFlag={this.state.openDialog}
+                            closeDialog={this._closeDialog}
+                            openDialog={this._openDialog}
+                            redirectToLogin={this._redirectToLogin}
+                            history={this.props.history}
+                            //addSet={this._addSet}
+                        />
+                    </Grid>
+                    ))}
                 </Grid>
             </div>
         )

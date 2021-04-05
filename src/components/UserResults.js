@@ -34,7 +34,6 @@ const useStyles = (theme) => ({
 class UserResults extends React.Component {
     constructor(props) {
         super(props);
-    
     }
 
     _viewUser = (user) => {
@@ -65,7 +64,25 @@ class UserResults extends React.Component {
                                         title="No-Image"
                                     />
                                     <CardContent>
-                                        <Typography>{user.handle}</Typography>
+                                        <Grid 
+                                            container
+                                            direction="column"
+                                            justify="center"
+                                            alignItems="center"
+                                        >
+                                            <Grid item>
+                                                <Typography>{user.handle}</Typography>
+                                            </Grid>
+                                            <Grid item>
+                                                <Typography 
+                                                    variant="caption"
+                                                    display="block"
+                                                    gutterBottom
+                                                >
+                                                    Member since: {user.userSince}
+                                                </Typography>
+                                            </Grid>
+                                        </Grid>
                                     </CardContent>
                                 </CardActionArea>
 

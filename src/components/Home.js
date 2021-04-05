@@ -1,5 +1,8 @@
 import React from "react";
 
+//JWT-Decode
+import jwt_decode from "jwt-decode";
+
 //Material-UI
 import Divider from "@material-ui/core/Divider";
 import { withStyles } from "@material-ui/core/styles";
@@ -39,6 +42,10 @@ const useStyles = (theme) => ({
     padding: theme.spacing(1),
     color: "rgb(136,136,136)",
     fontSize: 34
+  },
+  searchButton : {
+    backgroundColor : "rgb(33, 150, 243)",
+    color : "rgb(255, 255, 255)"
   }
 
 });
@@ -59,48 +66,105 @@ class Home extends React.Component {
     };
   }
 
+  _checkJWTExp = (decodedToken) => {
+      //Date.now() => milliseconds since UNIX - "start" of time (1/1/1970)
+      //decodedToken.exp => seconds since UNIX - "start" of time (1/1/1970)
+      return ( (Date.now() >= decodedToken.exp * 1000) ? true : false );
+  }
+
+  _checkUserLoginStatus = (userSessionToken) => {
+      if (userSessionToken) {
+          //Check that the JWT has not expired
+          let decodedToken = jwt_decode(userSessionToken);
+          return (this._checkJWTExp(decodedToken) === false) ? true : false;
+      }
+      return false;
+  }
+
+  _loadState = (arrayPromiseOutcomes, currUserCollection) => {
+    //Add the values from the resolved fetch requests to the state=
+    //Add a 'ownedByCurrUser' property to each set object to distinguish which sets the currently logged in user owns
+    let requestForSets = arrayPromiseOutcomes[0];
+    let requestForUsers = arrayPromiseOutcomes[1];
+    let sets = requestForSets.value;
+
+    if ( (requestForSets.status === "rejected" || requestForSets.status === "pending") && requestForUsers.status === "fulfilled") {
+      this.setState( {showSearchProgress : false, querySets : [], queryUsers : requestForUsers.value});
+    }
+    else if (requestForSets.status === "fulfilled" && (requestForUsers.status === "rejected" || requestForUsers.status === "pending") ) {
+      for (let i = 0; i < sets.length; i++) {
+        sets[i].ownedByCurrUser = currUserCollection.includes(sets[i].setID);
+      }
+      this.setState( {showSearchProgress : false, querySets : requestForSets.value, queryUsers : []});
+    }
+    else if (requestForSets.status === "fulfilled" && requestForUsers.status === "fulfilled") {
+      for (let i = 0; i < sets.length; i++) {
+        sets[i].ownedByCurrUser = currUserCollection.includes(sets[i].setID);
+      }
+      this.setState({showSearchProgress : false, querySets : requestForSets.value, queryUsers : requestForUsers.value});
+    }
+    else if ( requestForSets.status === "pending" && requestForUsers.status === "pending" ) {
+      this.setState({showSearchProgress : false, querySets : [], queryUsers : []});
+    }
+    else {
+      this.setState({showSearchProgress: false, querySets : [], queryUsers : []});
+      alert("Uh oh! Something went wrong in our side.");
+    }
+  }
+
   _search = () => {
-    //TODO: Every time a user clicks submit for search should I reset the the state (i.e. clear the arrays and negate the flags)???
     this.setState({searchPressed : true, querySets : [], queryUsers: [], showSearchProgress : true});
 
-    //TODO: Maybe might need to replace the spaces of searchValue with "+" or "%20" for the URL
+    //If there is a user currently logged, fetch the user's collection and fetch the results for the search query.
+    //If there is not a user currently logged in, fetch the results for the search query.
     Promise.allSettled([
       fetch(apiURL + `/search-sets?q=${this.state.searchValue}`, {
         method : "GET",
         headers : {"Content-Type" : "application/json"}
-      }),  
+      })
+      .then( (response) => {
+        return response.json();
+      })
+      ,  
       fetch(apiURL + `/search-users?q=${this.state.searchValue}`, {
         method : "GET",
         headers : {"Content-Type" : "application/json"}
       })
+      .then( (response) => {
+        return response.json();
+      })
     ])
-      .then( (results) => {
-        //results => [{status: "fulfilled" | "rejected" | "pending", value: Response }, ...]
-        let fetchSetsResult = results[0];
-        let fetchUsersResult = results[1];
+    .then( (arrayPromiseOutcomes) => {
+      //data => [{status: "fulfilled" | "rejected" | "pending", value: Response }, ...]
+      let userSessionToken = localStorage.getItem("userJWT");
+      let userLoggedIn = this._checkUserLoginStatus(userSessionToken);
 
-        if (fetchSetsResult.status === "fulfilled" || fetchUsersResult.status === "fulfilled") {
-          Promise.allSettled( [fetchSetsResult.value.json(), fetchUsersResult.value.json()])
-            .then( (fetchResults) => {
-              if (fetchResults[0].status === "fulfilled" || fetchResults[1].status === "fulfilled") {
-                this.setState( {querySets : fetchResults[0].value, queryUsers : fetchResults[1].value, showSearchProgress : false} );
-              }
-              else {
-                this.setState( {querySets : [], queryUsers : [], showSearchProgress : false} );
-              }
-            })
-            .catch( (error) => {
-              alert(`Error with the Promise.FIRSTallSettled: Code - ${error.code} Message - ${error.message}`);
-            })
-        }
-        else {
-          //Both fetch() requests were rejected or are still pending
-          this.setState( {querySets : [], queryUsers : [], showSearchProgress : false} );
-        }
-      })
-      .catch( (error) => {
-        alert(`Error with the Promise.FIRSTallSettled: Code - ${error.code} Message - ${error.message}`);
-      })
+      if (!userLoggedIn) {
+        //User is not logged in. Determine the outcome of the resolved fetches and store the values in the state
+        this._loadState(arrayPromiseOutcomes, []);
+      }
+      else {
+        fetch(apiURL + `/authenticate-user/${userSessionToken}`, {
+          method : "GET",
+          headers : {"Content-Type" : "application/json"}
+        })
+        .then( (response) => {
+          return response.json();
+        })
+        .then( (userData) => {
+          let userCollection = userData.collection;
+          this._loadState(arrayPromiseOutcomes, userCollection);
+        })
+        .catch( (error) => {
+          console.log("Uh oh! Having trouble authenticating user when searching for the query");
+          alert("Trouble when authenticating user during search");
+        })
+      }
+    })
+    .catch( (error) => {
+      console.log("ERROR WITH PROMISE.ALLSETTLED()");
+      alert("Unable to resolve the requests for sets and users");
+    })
   }
 
   render() {
@@ -133,10 +197,11 @@ class Home extends React.Component {
                     onChange={(event) => {
                       this.setState({searchValue : event.target.value})
                     }}
-                  / >
+                  />
                 </Grid>
                 <Grid item>
                   <Button 
+                    className={classes.searchButton}
                     type="submit"
                     variant="contained"
                     onClick={this._search}
@@ -154,7 +219,7 @@ class Home extends React.Component {
               {this.state.showSearchProgress && (
                 <LinearProgress />
               )}
-              {this.state.searchPressed ? (
+              {this.state.searchPressed && this.state.queryUsers.length >= 1 ? (
                 //Display linear progress bar from the moment the user clicks the 
                 //search button to the moment SetResults finishes rendering its content
                 <UserResults users={this.state.queryUsers} history={this.props.history}/>
@@ -169,7 +234,7 @@ class Home extends React.Component {
               {this.state.showSearchProgress && (
                 <LinearProgress />
               )}
-              {this.state.searchPressed ? (
+              {this.state.searchPressed && this.state.querySets.length >= 1 ? (
                 //Display linear progress bar from the moment the user clicks the 
                 //search button to the moment SetResults finishes rendering its content
                 <SetResults sets={this.state.querySets} history={this.props.history}/>
