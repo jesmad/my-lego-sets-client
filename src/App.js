@@ -13,7 +13,7 @@ import Navbar from "./components/Navbar.js";
 import Login from "./components/Login.js";
 import Home from "./components/Home.js";
 import Signup from "./components/Signup.js";
-import User from "./components/User.js";
+import UserPage from "./components/UserPage.js";
 import SetPage from "./components/SetPage.js";
 
 //TODO: Check if there is a user currently signed in. If there is, make sure that their JWT hasn't expired. Ultimately, this
@@ -79,7 +79,7 @@ class App extends React.Component {
           <Route
             path="/user/:userHandle"
             render={(props) => (
-              <User {...props} authenticated={isAuthenticated} />
+              <UserPage {...props} authenticated={isAuthenticated} />
             )}
           />
           <Route

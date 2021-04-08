@@ -38,7 +38,8 @@ const useStyles = (theme) => ({
     },
     hover : {
         "&:hover" : {
-            opacity : 0.5
+            opacity : 0.5,
+            cursor : "pointer"
         }
     },
     content : {
@@ -145,9 +146,10 @@ class Set extends React.Component {
     }
 
     _handleCardClick = (setInfo) => {
+        console.log("setInfo: ", setInfo);
         this.props.history.push({
             pathname : `/set/${setInfo.setID}`,
-            setInfo : setInfo
+            elementInfo : setInfo
         });
     }
 

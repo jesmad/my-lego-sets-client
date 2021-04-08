@@ -1,5 +1,8 @@
 import React from "react";
 
+//Local Components
+import NavTrail from "./NavTrail.js";
+
 //Material-UI
 import Paper from "@material-ui/core/Paper";
 import Card from "@material-ui/core/Card";
@@ -40,7 +43,7 @@ const useStyles = (theme) => ({
 
 });
 
-class User extends React.Component {
+class UserPage extends React.Component {
 
     constructor(props) {
         super(props);
@@ -52,11 +55,9 @@ class User extends React.Component {
     }
 
     componentDidMount() {
-        //const { userHandle } = this.props.match.params;
-        const { user } = this.props.location; //history.location is populated with user from the UserResults component when the user is clicked
-        
+        const { elementInfo } = this.props.location;
         let body = {
-            handle : user.handle
+            handle : elementInfo.handle
         };
 
         //Fetch the user's LEGO collection
@@ -69,7 +70,7 @@ class User extends React.Component {
                 return response.json();
             })
             .then( (data) => {
-                this.setState({userSets : data, userInfo : user});
+                this.setState({userSets : data, userInfo : elementInfo});
             })
             .catch( (error) => {
                 alert('ERRROR FETCHING USER LEGO COLLECTION');
@@ -77,11 +78,12 @@ class User extends React.Component {
     }
 
     render() {
-        const { userHandle } = this.props.match.params;
         const { classes } = this.props;
+        const { elementInfo } = this.props.location;
 
         return (
             <div className={classes.homeRoot}>
+                <NavTrail elementInfo={elementInfo}/>
                 <Grid 
                     container
                     spacing={2}
@@ -131,4 +133,4 @@ class User extends React.Component {
     }
 }
 
-export default withStyles(useStyles)(User);
+export default withStyles(useStyles)(UserPage);

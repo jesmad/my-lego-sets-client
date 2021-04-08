@@ -16,6 +16,7 @@ import LinearProgress from "@material-ui/core/LinearProgress";
 //Local Component
 import SetResults from "./SetResults.js";
 import UserResults from "./UserResults.js";
+import SkeletonLoad from "./SkeletonLoad.js";
 
 //Express API Endpoint (just the URL of the Cloud Function)
 const apiURL = "https://us-central1-my-lego-sets.cloudfunctions.net/api2";
@@ -30,7 +31,13 @@ const useStyles = (theme) => ({
     //backgroundColor: "blue",
     margin: theme.spacing(2),
   },
-  paperRow : {
+  noResultsText : {
+    padding : theme.spacing(1)
+  },
+  paperRowNoResults : {
+    maxHeight : "8%"
+  },
+  paperRowWithResults : {
     minHeight : theme.spacing(40),
     padding : theme.spacing(1)
   },
@@ -57,12 +64,10 @@ class Home extends React.Component {
       searchValue : "",
       searchPressed : false,
       showSearchProgress : false,
+      showSectionTitles : false,
+      showSkeletonLoading : false,
       querySets : [],
-      //querySetsModified : false,
       queryUsers : []
-      //queryUsersModified : false
-      //openDialog : false,
-      //closeDialog : false
     };
   }
 
@@ -89,31 +94,34 @@ class Home extends React.Component {
     let sets = requestForSets.value;
 
     if ( (requestForSets.status === "rejected" || requestForSets.status === "pending") && requestForUsers.status === "fulfilled") {
-      this.setState( {showSearchProgress : false, querySets : [], queryUsers : requestForUsers.value});
+      this.setState( {showSkeletonLoading : false, showSearchProgress : false, querySets : [], queryUsers : requestForUsers.value});
     }
     else if (requestForSets.status === "fulfilled" && (requestForUsers.status === "rejected" || requestForUsers.status === "pending") ) {
       for (let i = 0; i < sets.length; i++) {
         sets[i].ownedByCurrUser = currUserCollection.includes(sets[i].setID);
       }
-      this.setState( {showSearchProgress : false, querySets : requestForSets.value, queryUsers : []});
+      this.setState( {showSkeletonLoading : false, showSearchProgress : false, querySets : requestForSets.value, queryUsers : []});
     }
     else if (requestForSets.status === "fulfilled" && requestForUsers.status === "fulfilled") {
       for (let i = 0; i < sets.length; i++) {
         sets[i].ownedByCurrUser = currUserCollection.includes(sets[i].setID);
       }
-      this.setState({showSearchProgress : false, querySets : requestForSets.value, queryUsers : requestForUsers.value});
+      this.setState({showSkeletonLoading : false, showSearchProgress : false, querySets : requestForSets.value, queryUsers : requestForUsers.value});
     }
     else if ( requestForSets.status === "pending" && requestForUsers.status === "pending" ) {
-      this.setState({showSearchProgress : false, querySets : [], queryUsers : []});
+      this.setState({showSkeletonLoading : false, showSearchProgress : false, querySets : [], queryUsers : []});
     }
     else {
-      this.setState({showSearchProgress: false, querySets : [], queryUsers : []});
+      this.setState({showSkeletonLoading : false, showSearchProgress: false, querySets : [], queryUsers : []});
       alert("Uh oh! Something went wrong in our side.");
     }
   }
 
   _search = () => {
-    this.setState({searchPressed : true, querySets : [], queryUsers: [], showSearchProgress : true});
+    this.setState({
+      searchPressed : true, showSkeletonLoading : true, showSectionTitles : true, 
+      querySets : [], queryUsers: [], showSearchProgress : true
+    });
 
     //If there is a user currently logged, fetch the user's collection and fetch the results for the search query.
     //If there is not a user currently logged in, fetch the results for the search query.
@@ -174,10 +182,11 @@ class Home extends React.Component {
         <Grid 
           container
           direction="column"
-          justify="center"
-          alignItems="stretch"
+          //justify="center"
+          //alignItems="stretch"
           spacing={2}
         >
+          {/* Search bar and search button */}
           <Grid item className={classes.gridRow}>
             <Paper elevation={0}>
               <Grid 
@@ -213,36 +222,65 @@ class Home extends React.Component {
             </Paper>
           </Grid>
           <Divider variant="middle" />
-          <Grid item className={classes.gridRow}>
-            <Typography className={classes.heading} variant="h1">Users</Typography>
-            <Paper elevation={2} className={classes.paperRow}>
-              {this.state.showSearchProgress && (
-                <LinearProgress />
-              )}
-              {this.state.searchPressed && this.state.queryUsers.length >= 1 ? (
-                //Display linear progress bar from the moment the user clicks the 
-                //search button to the moment SetResults finishes rendering its content
-                <UserResults users={this.state.queryUsers} history={this.props.history}/>
-              ) : ( 
-                <Typography>NO USERS TO SHOW</Typography>
-              )}
-            </Paper>
-          </Grid>
-          <Grid item className={classes.gridRow}>
-            <Typography className={classes.heading} variant="h1">Sets</Typography>
-            <Paper elevation={2} className={classes.paperRow}>
-              {this.state.showSearchProgress && (
-                <LinearProgress />
-              )}
-              {this.state.searchPressed && this.state.querySets.length >= 1 ? (
-                //Display linear progress bar from the moment the user clicks the 
-                //search button to the moment SetResults finishes rendering its content
-                <SetResults sets={this.state.querySets} history={this.props.history}/>
-              ) : ( 
-                <Typography>NO SETS TO SHOW</Typography>
-              )}
-            </Paper>
-          </Grid>
+          {/* Progress Bar */}
+          {this.state.showSearchProgress && (
+            <LinearProgress />
+          )}
+          {this.state.showSkeletonLoading ? (
+            <SkeletonLoad />
+          ) : (
+            <div>
+              <Grid item className={classes.gridRow}>
+                {/* Users Section */}
+                {(!this.state.showSearchProgress && this.state.showSectionTitles) && (
+                  <React.Fragment>
+                    <Typography className={classes.heading} variant="h1">Users</Typography>
+                    <Paper 
+                      elevation={1} 
+                      className={(this.state.queryUsers.length > 0) ? classes.paperRowWithResults : classes.paperRowNoResults}
+                    >
+                      {(this.state.queryUsers.length > 0) ? (
+                        <UserResults users={this.state.queryUsers} history={this.props.history}/>
+                      ) : (
+                        <Typography 
+                          className={classes.noResultsText}
+                          variant="overline" 
+                          display="block" 
+                          gutterBottom
+                        >
+                          No matches
+                        </Typography>
+                      )}
+                    </Paper>
+                  </React.Fragment>
+                )}
+              </Grid>
+              <Grid item className={classes.gridRow}>
+                {/* Sets Section */}
+                {(!this.state.showSearchProgress && this.state.showSectionTitles)  && (
+                  <React.Fragment>
+                    <Typography className={classes.heading} variant="h1">Sets</Typography>
+                    <Paper 
+                      elevation={1} 
+                      className={(this.state.querySets.length > 0) ? classes.paperRowWithResults : classes.paperRowNoResults}
+                    >
+                      {(this.state.querySets.length > 0) ? (
+                        <SetResults sets={this.state.querySets} history={this.props.history}/>
+                      ) : (
+                        <Typography 
+                          variant="overline" 
+                          display="block" 
+                          gutterBottom
+                        >
+                          No matches
+                        </Typography>
+                      )}
+                    </Paper>
+                  </React.Fragment>
+                )}
+              </Grid>
+            </div>
+          )}
         </Grid>
       </div>
     )

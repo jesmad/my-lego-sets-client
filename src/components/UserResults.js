@@ -36,11 +36,11 @@ class UserResults extends React.Component {
         super(props);
     }
 
-    _viewUser = (user) => {
+    _viewUser = (userInfo) => {
         //TODO: Open up a new page and populate the page with the user's collection
         this.props.history.push({
-            pathname : `/user/${user.handle}`,
-            user : user
+            pathname : `/user/${userInfo.handle}`,
+            elementInfo : userInfo
         });
         //this.props.history.push(`/user/${user.handle}`);
     }

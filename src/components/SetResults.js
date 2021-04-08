@@ -201,7 +201,6 @@ class SetResults extends React.Component {
 
     render() {
         const { classes, sets } = this.props;
-        //this._currUserSets(sets);
         
         //Distinguish which sets are in the current user's collection by adding a property to each 'set' object
         return (
@@ -216,7 +215,6 @@ class SetResults extends React.Component {
                             openDialog={this._openDialog}
                             redirectToLogin={this._redirectToLogin}
                             history={this.props.history}
-                            //addSet={this._addSet}
                         />
                     </Grid>
                     ))}
